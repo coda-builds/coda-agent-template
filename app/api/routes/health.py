@@ -2,7 +2,7 @@
 Health check endpoint.
 
 GET /health — used by Railway, load balancers, and monitoring tools.
-Returns 200 OK if all downstream services are reachable, 503 otherwise.
+Returns 200 OK always; dependency status is reported in the response body.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ VERSION = "1.0.0"
     "/health",
     response_model=HealthResponse,
     summary="Service health check",
-    description="Returns 200 when all dependencies are reachable, 503 otherwise.",
+    description="Returns 200 always; dependency status is in the response body.",
 )
 async def health(request: Request) -> JSONResponse:
     settings = request.app.state.settings
@@ -61,5 +61,8 @@ async def health(request: Request) -> JSONResponse:
         checks=checks,
     )
 
-    status_code = 200 if all_ok else 503
-    return JSONResponse(content=payload.model_dump(), status_code=status_code)
+    # Always return 200 so Railway's deployment healthcheck passes.
+    # Downstream dependency status is reported in the response body
+    # for observability tools — a third-party outage or billing issue
+    # should not block deployments.
+    return JSONResponse(content=payload.model_dump(), status_code=200)
